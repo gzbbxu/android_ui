@@ -298,6 +298,115 @@ public ValueAnimator clone()
 
 setStartDelay(long startDelay)非常容易理解，**就是设置多久后动画才开始**。 但 clone()这个函数就有点难度了；首先是什么叫克隆。就是完全一样！注意是完全一样！就是复制出来一个完全一样的新的 ValueAnimator 实例出来。对原来的那个 ValueAnimator 是怎么处理的，在这个新的实例中也是全部一样的。 我们来看一个例子来看一下，什么叫全部一样.
 
+## View的工作原理——View的工作流程
+
+View的工作流程主要是指measure、layout、draw这三大流程，即测量、布局和绘制**，其中measure确定View的测量宽高，layout确定View的最终宽高和四个顶点的位置，而draw则将View绘制到屏幕上**
+
+#### measure过程
+
+measure过程要分情况来看
+
+- 如果只是一个原始的View，那么通过measure方法就完成了其测量过程
+
+- 如果是一个ViewGroup，出了完成自己的测量过程外，**还会遍历去调用所有的子元素的measure方法，各个子元素再递归去执行这个流程，下面针对这两种情况分别讨论**。
+
+  1.  **View的measure过程**
+
+     View的measure过程由其measure方法来完成，**measure方法是一个final类型的方法**，这意味着子类不能重写此方法，在View的onMeasure方法，**因此只需要看onMeasure的实现即可，**View的onMeasure方法如下所示
+
+     ```java
+         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+             setMeasuredDimension(getDefaultSize(getSuggestedMinimumWidth(), widthMeasureSpec),
+                     getDefaultSize(getSuggestedMinimumHeight(), heightMeasureSpec));
+         }
+     ```
+
+     上述代码很简洁，但是简洁并不代表简单，**setMeasuredDimension方法会设置View宽高的测量值**，因此我们只需要看getDefaultSize这个方法即可：
+
+     ​      
+
+     ```java
+         public static int getDefaultSize(int size, int measureSpec) {
+             int result = size;
+             int specMode = MeasureSpec.getMode(measureSpec);
+             int specSize = MeasureSpec.getSize(measureSpec);
+      
+             switch (specMode) {
+             case MeasureSpec.UNSPECIFIED:
+                 result = size;
+                 break;
+             case MeasureSpec.AT_MOST:
+             case MeasureSpec.EXACTLY:
+                 result = specSize;
+                 break;
+             }
+             return result;
+         }
+     ```
+
+     ##### 说一下SpaceMode得三种模式：
+
+     **UNSPECIFIED:**
+
+     ​	父容器不对View有任何限制，要多大给多大，这种情况一般用于系统内部，表示一种测量得状态。
+
+     **EXACTLY:**
+
+     ​	父容器已经检测出View所需要得精确大小，这个时候View得最终大小就是SpaceSize所指定得值。
+
+     它对应LayoutParams中的match_parent和具体的数值这两种模式。
+
+     **AT_MOST:**
+
+     ​	**父容器指定了一个可用大小即 SpaceSize,View 的大小不能大于这个值**，具体什么值要看不同View的具体实现，**它对应LayoutParams中的wrap_conent.**
+
+     
+
+     可以看出，getDefaultSize这个方法的逻辑很简单，**对于我们来说，我们只需要看AT_MOST和EXACTLY这两种情况**。简单地理解，其实getDefaultSize返回的大小就是measureSpec中的specSize，而这个specSize就是View测量后的大小，这里多次提到测量后的大小，是因为View最终的大小是在layout阶段确定，所以这里必须要加以区分，但是几乎所有情况下View的测量大小和最终大小是相等的。
+
+     至于UNSPECIFIED这种情况，一般用于系统内部的测量过程，在这种情况下，View的大小为getDefaultSize的第一个参数size，即宽高分别为getSuggestedMinimumWidth和getSuggestedMinimumHeight这两个方法的返回值，看一下它们的源码：
+
+  ```java
+      protected int getSuggestedMinimumHeight() {
+          return (mBackground == null) ? mMinHeight : max(mMinHeight, mBackground.getMinimumHeight());
+   
+      }
+   
+      protected int getSuggestedMinimumWidth() {
+          return (mBackground == null) ? mMinWidth : max(mMinWidth, mBackground.getMinimumWidth());
+      }
+  ```
+
+  这里只分析getSuggestedMinimumWidth方法的实现，getSuggestedMinimumHeight和它实现原理是一样的。getSuggestedMinimumWidth的代码可以看出，
+
+  **如果View没有设置背景，那么View的宽度为mMinWidth，而mMinWidth对应于android:minWidth这个属性所指的值，因此View的宽度即为android:minWidth属性所指定的值。这个属性如果不指定，那么mMinWidth则默认为0；**
+
+  **如果View指定了背景，则View的宽度为max(mMinWidth,mBackground.getMinimumWidth())。mMinWidth的含义我们已经知道了，那么mBackground.getMinimumWidth()是什么呢？我们看一下Drawable的getMinimunWidth方法，如下所示**。
+
+  ```java
+  public int getMinimumWidth() {
+      final int intrinsicWidth = getIntrinsicWidth();
+      return intrinsicWidth > 0 ? intrinsicWidth : 0;
+  }
+  ```
+  
+
+  
+
+  
+
+   2, 
+
+  1. 
+
+
+
+
+
+
+
+
+
 
 
 #### onMeasure
