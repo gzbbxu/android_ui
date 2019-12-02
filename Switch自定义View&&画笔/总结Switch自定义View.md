@@ -329,6 +329,7 @@ measure过程要分情况来看
          public static int getDefaultSize(int size, int measureSpec) {
              int result = size;
              int specMode = MeasureSpec.getMode(measureSpec);
+             //specSize就是View测量后的大小
              int specSize = MeasureSpec.getSize(measureSpec);
       
              switch (specMode) {
@@ -343,29 +344,30 @@ measure过程要分情况来看
              return result;
          }
      ```
-
-     ##### 说一下SpaceMode得三种模式：
-
-     **UNSPECIFIED:**
-
-     ​	父容器不对View有任何限制，要多大给多大，这种情况一般用于系统内部，表示一种测量得状态。
-
-     **EXACTLY:**
-
-     ​	父容器已经检测出View所需要得精确大小，这个时候View得最终大小就是SpaceSize所指定得值。
-
-     它对应LayoutParams中的match_parent和具体的数值这两种模式。
-
-     **AT_MOST:**
-
-     ​	**父容器指定了一个可用大小即 SpaceSize,View 的大小不能大于这个值**，具体什么值要看不同View的具体实现，**它对应LayoutParams中的wrap_conent.**
-
+```
+     
+##### 说一下SpaceMode得三种模式：
+     
+**UNSPECIFIED:**
+     
+​	父容器不对View有任何限制，要多大给多大，这种情况一般用于系统内部，表示一种测量得状态。
+     
+**EXACTLY:**
+     
+​	父容器已经检测出View所需要得精确大小，这个时候View得最终大小就是SpaceSize所指定得值。
+     
+**它对应LayoutParams中的match_parent和具体的数值这两种模式**。
+     
+**AT_MOST:**
+     
+​	**父容器指定了一个可用大小即 SpaceSize,View 的大小不能大于这个值**，具体什么值要看不同View的具体实现，**它对应LayoutParams中的wrap_conent.**
      
 
-     可以看出，getDefaultSize这个方法的逻辑很简单，**对于我们来说，我们只需要看AT_MOST和EXACTLY这两种情况**。简单地理解，其实getDefaultSize返回的大小就是measureSpec中的specSize，而这个specSize就是View测量后的大小，这里多次提到测量后的大小，是因为View最终的大小是在layout阶段确定，所以这里必须要加以区分，但是几乎所有情况下View的测量大小和最终大小是相等的。
-
-     至于UNSPECIFIED这种情况，一般用于系统内部的测量过程，在这种情况下，View的大小为getDefaultSize的第一个参数size，即宽高分别为getSuggestedMinimumWidth和getSuggestedMinimumHeight这两个方法的返回值，看一下它们的源码：
-
+     
+可以看出，getDefaultSize这个方法的逻辑很简单，**对于我们来说，我们只需要看AT_MOST和EXACTLY这两种情况**。简单地理解，其实**getDefaultSize返回的大小就是measureSpec中的specSize，而这个specSize就是View测量后的大小**，这里多次提到测量后的大小，**是因为View最终的大小是在layout阶段确定，所以这里必须要加以区分**，**但是几乎所有情况下View的测量大小和最终大小是相等的**。
+     
+   至于UNSPECIFIED这种情况，一般用于系统内部的测量过程，在这种情况下，View的大小为getDefaultSize的第一个参数size，即宽高分别为getSuggestedMinimumWidth和getSuggestedMinimumHeight这两个方法的返回值，看一下它们的源码：
+  
   ```java
       protected int getSuggestedMinimumHeight() {
           return (mBackground == null) ? mMinHeight : max(mMinHeight, mBackground.getMinimumHeight());
@@ -375,13 +377,13 @@ measure过程要分情况来看
       protected int getSuggestedMinimumWidth() {
           return (mBackground == null) ? mMinWidth : max(mMinWidth, mBackground.getMinimumWidth());
       }
-  ```
+```
 
-  这里只分析getSuggestedMinimumWidth方法的实现，getSuggestedMinimumHeight和它实现原理是一样的。getSuggestedMinimumWidth的代码可以看出，
+这里只分析getSuggestedMinimumWidth方法的实现，getSuggestedMinimumHeight和它实现原理是一样的。getSuggestedMinimumWidth的代码可以看出，
 
-  **如果View没有设置背景，那么View的宽度为mMinWidth，而mMinWidth对应于android:minWidth这个属性所指的值，因此View的宽度即为android:minWidth属性所指定的值。这个属性如果不指定，那么mMinWidth则默认为0；**
+**如果View没有设置背景，那么View的宽度为mMinWidth，而mMinWidth对应于android:minWidth这个属性所指的值，因此View的宽度即为android:minWidth属性所指定的值。这个属性如果不指定，那么mMinWidth则默认为0；**
 
-  **如果View指定了背景，则View的宽度为max(mMinWidth,mBackground.getMinimumWidth())。mMinWidth的含义我们已经知道了，那么mBackground.getMinimumWidth()是什么呢？我们看一下Drawable的getMinimunWidth方法，如下所示**。
+**如果View指定了背景，则View的宽度为max(mMinWidth,mBackground.getMinimumWidth())。mMinWidth的含义我们已经知道了，那么mBackground.getMinimumWidth()是什么呢？我们看一下Drawable的getMinimunWidth方法，如下所示**。
 
   ```java
   public int getMinimumWidth() {
@@ -389,13 +391,39 @@ measure过程要分情况来看
       return intrinsicWidth > 0 ? intrinsicWidth : 0;
   }
   ```
-  
 
-  
+  可以看出，getMinimumWidth()返回的就是Drawable的原始宽度，前提是这个Drawable有原始宽度，否则就返回0。那么Drawable在什么情况下有原始宽度呢？这里先举个例子说明一下，ShapeDrawable无原始宽高，而BitmapDrawable有原始宽高(图片的尺寸)，详细内容会在后续章节进行介绍。
 
-  
+#####    Drawable之getIntrinsicWidth()和getIntrinsicHeight()
 
-   2, 
+​	 https://stackoverflow.com/questions/6536418/why-are-the-width-height-of-the-drawable-in-imageview-wrong
+
+`image.getDrawable().getIntrinsicWidth()`我得到的值大于源图像的宽度。X坐标返回2880而不是1920，那是1.5倍太大吗？
+
+
+
+您说可绘制对象来自您的`/res`文件夹。它在哪个文件夹中？
+
+- `/res/drawable`
+
+- `/res/drawable-mdpi`
+
+- `/res/drawable-hdpi`
+
+  等等..
+
+您要测试的设备的密度是多少？它是一般密度为240dpi的Nexus S吗？因为如果您的源可绘制对象位于`drawable-mdpi`文件夹中，并且您正在使用240dpi的设备进行测试，那么Android系统将自动将可绘制对象放大一个因子，`1.5`以便物理尺寸与160dpi的基线设备密度保持一致。
+
+调用时`getIntrinsicWidth()`，返回的是Android缩放可绘制对象后可绘制对象**想要**的大小。您会注意到`2880 = 1920 * 1.5`
+
+如果您将可绘制对象放置在`/res/drawable`Android系统中，则将这些可绘制对象视为适用于mdpi设备的可绘制对象，因此会在Nexus S中进行放大。如果这是针对hdpi屏幕的，并且您不希望将其可扩展使用，请尝试将其放置在`drawable-hdpi`
+
+
+
+
+
+
+ 2, 
 
   1. 
 
