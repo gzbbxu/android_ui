@@ -344,32 +344,36 @@ measure过程要分情况来看
              return result;
          }
      ```
-```
-     
+
+
+
+
+
+
+
 ##### 说一下SpaceMode得三种模式：
-     
+
 **UNSPECIFIED:**
      
-​	父容器不对View有任何限制，要多大给多大，这种情况一般用于系统内部，表示一种测量得状态。
-     
+	父容器不对View有任何限制，要多大给多大，这种情况一般用于系统内部，表示一种测量得状态。
+
 **EXACTLY:**
      
-​	父容器已经检测出View所需要得精确大小，这个时候View得最终大小就是SpaceSize所指定得值。
-     
+	父容器已经检测出View所需要得精确大小，这个时候View得最终大小就是SpaceSize所指定得值。
+
 **它对应LayoutParams中的match_parent和具体的数值这两种模式**。
      
 **AT_MOST:**
      
-​	**父容器指定了一个可用大小即 SpaceSize,View 的大小不能大于这个值**，具体什么值要看不同View的具体实现，**它对应LayoutParams中的wrap_conent.**
-     
+	**父容器指定了一个可用大小即 SpaceSize,View 的大小不能大于这个值**，具体什么值要看不同View的具体实现，**它对应LayoutParams中的wrap_conent.**
 
-     
+
 可以看出，getDefaultSize这个方法的逻辑很简单，**对于我们来说，我们只需要看AT_MOST和EXACTLY这两种情况**。简单地理解，其实**getDefaultSize返回的大小就是measureSpec中的specSize，而这个specSize就是View测量后的大小**，这里多次提到测量后的大小，**是因为View最终的大小是在layout阶段确定，所以这里必须要加以区分**，**但是几乎所有情况下View的测量大小和最终大小是相等的**。
      
    至于UNSPECIFIED这种情况，一般用于系统内部的测量过程，在这种情况下，View的大小为getDefaultSize的第一个参数size，即宽高分别为getSuggestedMinimumWidth和getSuggestedMinimumHeight这两个方法的返回值，看一下它们的源码：
-  
-  ```java
-      protected int getSuggestedMinimumHeight() {
+
+```java
+ protected int getSuggestedMinimumHeight() {
           return (mBackground == null) ? mMinHeight : max(mMinHeight, mBackground.getMinimumHeight());
    
       }
@@ -392,7 +396,17 @@ measure过程要分情况来看
   }
   ```
 
-  可以看出，getMinimumWidth()返回的就是Drawable的原始宽度，前提是这个Drawable有原始宽度，否则就返回0。那么Drawable在什么情况下有原始宽度呢？这里先举个例子说明一下，ShapeDrawable无原始宽高，而BitmapDrawable有原始宽高(图片的尺寸)，详细内容会在后续章节进行介绍。
+  可以看出，**getMinimumWidth()返回的就是Drawable的原始宽度**，前提是这个Drawable有原始宽度，否则就返回0。那么Drawable在什么情况下有原始宽度呢？这里先举个例子说明一下，**ShapeDrawable无原始宽高，而BitmapDrawable有原始宽高(图片的尺寸)**，详细内容会在后续章节进行介绍。
+
+
+
+这里再总结一下**getSuggestedMinimumWidth的逻辑：如果View没有设置背景，那么返回android:minWidth这个属性所指定的值，这个值可以为0；如果View设置了背景，则返回android:minWidth和背景的最小宽度这两种中的最大值**，getSuggestedMinimumWidth和getSuggestedMinimumHeight的返回值就是View再UNSPECIFIED情况下的测量宽高。
+
+**从getDefaultSize方法的实现来看，View的宽高由specSize决定**，所以我们可以得出如下结论：直接继承View的自定义控件需要重写onMeasure方法并设置wrap_content时的自身大小，否则再布局中使用wrap_content就相当于使用match_parent。为什么呢？这个原因需要结合上述代码和上表才能更好地理解。从上述代码中我们知道，如果View在布局中使用wrap_content，那么它的specMode是AT_MOST模式，在这种模式下，它的宽高等于specSize；查看上表可以知道，这种情况下View的specSize是parentSize，而parentSize是父容器中目前可以使用的带线啊哦，也就是父容器当前剩余的控件大小。很显然，View的宽高就等于父容器当前剩余的控件大小，这种效果和在布局中使用match_parent完全一致。如何解决这个问题呢？也很简单，如下所示。
+
+
+
+
 
 #####    Drawable之getIntrinsicWidth()和getIntrinsicHeight()
 
